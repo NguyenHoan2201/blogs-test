@@ -1,0 +1,48 @@
+version: "3.5"
+services:
+  postgres:
+    image: "postgres:14"
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: blogs
+      POSTGRES_USER: blogs
+      POSTGRES_DB: blogs
+
+  service:
+    image: service-dev
+    build:
+      context: service
+      target: service-dev
+    working_dir: /app
+    volumes:
+      - ./service/:/app
+    ports:
+      - 3000:3000
+    environment:
+      - DATABASE_URL=postgresql://blogs:blogs@postgres:5432/blogs?connect_timeout=300&schema=public
+      - FRONTEND_URL=http://ui:8080
+      - JWT_SECRET=secret
+      - PORT=3000
+      - HOST=0.0.0.0
+    depends_on:
+      - "postgres"
+    command: >
+      bash -c "npx prisma migrate dev && yarn seed && yarn dev"
+
+  ui:
+    image: ui-dev
+    build:
+      context: ui
+      target: ui-dev
+    working_dir: /app
+    volumes:
+      - ./ui/:/app
+    ports:
+      - 8080:8080
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - service
+    command: >
+      bash -c "yarn dev"
